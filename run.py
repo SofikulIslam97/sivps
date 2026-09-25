@@ -2,36 +2,7 @@
 # Made for IamGunpoint
 """
 IamGunpoint's HopX SSH Terminal
-Simple terminal-based HopX sandbox manager.
-
-Install:
-  pip install hopx-ai
-
-Run:
-  python3 app.py
-
-First run:
-  - checks ~/.hopx_ssh/config.json
-  - if no API key, asks for it
-  - saves it
-
-Menu:
-  1) create
-  2) stop
-  3) start
-  4) delete
-  5) terminal
-  6) exit
-  plus extra useful options.
-
-Notes:
-  - "max timeout" is not published as one exact number in the quickstart docs.
-    This script tries a very large timeout first, then falls back through smaller
-    values until HopX accepts one.
-  - This is SSH-like, not real OpenSSH. It runs shell commands through HopX SDK.
-  - Commands that require a true interactive TTY, like `sudo su`, may not become
-    an interactive root shell through the command API. The syntax wrapper is fixed,
-    but HopX command execution is still non-PTY command execution.
+Simple terminal-based HopX sandbox manager (6 Months Update).
 """
 
 from __future__ import annotations
@@ -61,20 +32,14 @@ DEFAULT_TEMPLATE = "code-interpreter"
 DEFAULT_CWD = "/workspace"
 OWNER_NAME = "IamGunpoint"
 
-# HopX docs do not state one exact maximum timeout in the quickstart.
-# So "max" means: try these from largest to smaller until HopX accepts.
+# Updated Timeout Array: Starting from 6 Months down to safe fallbacks
 MAX_TIMEOUT_TRIES = [
-    2_147_483_647,  # int32 max seconds, ~68 years; likely rejected, but tried first
-    315_360_000,    # 10 years
-    31_536_000,     # 1 year
-    2_592_000,      # 30 days
-    604_800,        # 7 days
-    172_800,        # 48 hours
-    86_400,         # 24 hours
-    43_200,         # 12 hours
-    21_600,         # 6 hours
-    7_200,          # 2 hours
-    3_600,          # 1 hour
+    15_552_000, # 6 Months (~180 days)
+    2_592_000,  # 1 Month (30 days)
+    604_800,    # 7 Days
+    86_400,     # 24 Hours
+    3_600,      # 1 Hour
+    60          # 1 Minute
 ]
 
 
@@ -242,7 +207,7 @@ def parse_timeout_choice(raw: str) -> list[int]:
         seconds = int(raw)
         return [seconds]
     except Exception:
-        warn("Invalid timeout, using max fallback list")
+        warn("Invalid timeout, trying 6 Months fallback list")
         return MAX_TIMEOUT_TRIES[:]
 
 
@@ -267,7 +232,7 @@ def create(api_key: str) -> Any:
             warn(f"timeout {timeout}s rejected/failed: {e}")
             time.sleep(0.2)
 
-    raise RuntimeError(f"Could not create sandbox with any timeout. Last error: {last_error}")
+    raise RuntimeError(f"Could not create sandbox. Last error: {last_error}")
 
 
 def list_sandboxes(api_key: str) -> list[Any]:
@@ -362,13 +327,6 @@ def action(api_key: str, name: str) -> None:
 
 # ---------- terminal ----------
 def run_command(sb: Any, command: str, cwd: str, timeout: int = 300) -> Tuple[str, str, int, str]:
-    """
-    Run command in HopX sandbox and preserve cwd.
-
-    Important fix:
-      This wrapper avoids the old brace/semicolon syntax issue. It runs the
-      command, captures `$?`, prints cwd, then exits with the real command code.
-    """
     marker = "__HOPX_SSH_CWD__"
     safe_cwd = shlex.quote(cwd)
 
@@ -411,19 +369,6 @@ Terminal commands:
   delete                    delete sandbox and exit
 
 Anything else runs as shell command in the sandbox.
-Examples:
-  pwd
-  ls -la
-  cd /workspace
-  pip install requests
-  python --version
-
-Note:
-  sudo su may not become an interactive root shell because HopX command execution
-  is not a full PTY/OpenSSH session. Try direct commands like:
-    whoami
-    sudo whoami
-    sudo apt update
 """.strip(), C.cyan))
 
 
